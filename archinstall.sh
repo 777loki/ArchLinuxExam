@@ -50,18 +50,20 @@ mkswap /dev/vg0/swap
 
 # Double chiffrement secret
 echo -n "$PASS" | cryptsetup luksFormat --type luks2 /dev/vg0/secret -
+echo -n "$PASS" | cryptsetup open /dev/vg0/secret secret_crypt
+mkfs.ext4 /dev/mapper/secret_crypt
 
 # Mount
 mount /dev/vg0/root /mnt
-mkdir -p /mnt/{boot,home,partage,var/lib/virtualbox}
+mkdir -p /mnt/{boot,home,partage,secret,var/lib/virtualbox}
 mount "${DISK}1" /mnt/boot
 mount /dev/vg0/home /mnt/home
 mount /dev/vg0/partage /mnt/partage
+mount /dev/mapper/secret_crypt /mnt/secret
 mount /dev/vg0/vbox /mnt/var/lib/virtualbox
 swapon /dev/vg0/swap
 
 # Installation
-pacman -Syu --noconfirm
 pacstrap -K /mnt base linux linux-firmware lvm2 base-devel networkmanager grub efibootmgr xorg-server i3-wm i3status dmenu terminator firefox openssh htop git virtualbox virtualbox-host-modules-arch vim bash-completion man-db man-pages texinfo
 
 # FSTAB (Après pacstrap)
@@ -81,14 +83,14 @@ echo "fr_FR.UTF-8 UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=fr_FR.UTF-8" > /etc/locale.conf
 echo "KEYMAP=fr" > /etc/vconsole.conf
-echo "\$HOSTNAME" > /etc/hostname
+echo "$HOSTNAME" > /etc/hostname
 
 # Users & Groups
 groupadd famille
 useradd -m -G wheel,vboxusers,famille -s /bin/bash Enzo
 useradd -m -G famille -s /bin/bash Fiston
-echo "Enzo:\$PASS" | chpasswd
-echo "Fiston:\$PASS" | chpasswd
+echo "Enzo:$PASS" | chpasswd
+echo "Fiston:$PASS" | chpasswd
 
 # Permissions (le dossier est déjà monté sur /partage dans le chroot)
 chown root:famille /partage
