@@ -78,11 +78,10 @@ mkfs.ext4 /dev/mapper/secret_crypt
 
 # Mount
 mount /dev/vg0/root /mnt
-mkdir -p /mnt/{boot,home,partage,secret,var/lib/virtualbox}
+mkdir -p /mnt/{boot,home,partage,var/lib/virtualbox}
 mount "${DISK}1" /mnt/boot
 mount /dev/vg0/home /mnt/home
 mount /dev/vg0/partage /mnt/partage
-mount /dev/mapper/secret_crypt /mnt/secret
 mount /dev/vg0/vbox /mnt/var/lib/virtualbox
 swapon /dev/vg0/swap
 
