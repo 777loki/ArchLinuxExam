@@ -84,9 +84,6 @@ mount /dev/vg0/partage /mnt/partage
 mount /dev/vg0/vbox /mnt/var/lib/virtualbox
 swapon /dev/vg0/swap
 
-# Generate fstab
-genfstab -U /mnt >> /mnt/etc/fstab
-
 #Pacman packages refresh
 pacman -Syu --noconfirm
 
@@ -116,6 +113,9 @@ pacstrap -K /mnt \
   man-db \
   man-pages \
   texinfo
+
+# Generate fstab
+genfstab -U /mnt >> /mnt/etc/fstab
 
 # Initramfs for LUKS/LVM
 sed -i '/^HOOKS=(/c\HOOKS=(base udev autodetect modconf block keyboard keymap encrypt lvm2 filesystems fsck)' /mnt/etc/mkinitcpio.conf
