@@ -86,8 +86,8 @@ mount /dev/mapper/secret_crypt /mnt/secret
 mount /dev/vg0/vbox /mnt/var/lib/virtualbox
 swapon /dev/vg0/swap
 
-# Installation
-echo "!!! Package Installation !!!"
+# Packages installation
+echo "!!! Packages Installation !!!"
 # pacman -Syu --noconfirm >> crash
 pacstrap -K /mnt base linux linux-firmware lvm2 base-devel networkmanager grub efibootmgr xorg-server i3-wm i3status dmenu terminator firefox openssh htop git virtualbox virtualbox-host-modules-arch vim bash-completion man-db man-pages texinfo
 
@@ -109,14 +109,14 @@ echo "KEYMAP=fr" > /etc/vconsole.conf
 echo "$HOSTNAME" > /etc/hostname
 
 # Users / Groups
-groupadd famille
-useradd -m -G wheel,vboxusers,famille -s /bin/bash Enzo
-useradd -m -G famille -s /bin/bash Fiston
+groupadd pack
+useradd -m -G wheel,vboxusers,pack -s /bin/bash Enzo
+useradd -m -G pack -s /bin/bash kid
 echo "Enzo:$PASS" | chpasswd
-echo "Fiston:$PASS" | chpasswd
+echo "kid:$PASS" | chpasswd
 
 # Permissions
-chown root:famille /partage
+chown root:pack /partage
 chmod 770 /partage
 
 # i3 Config
