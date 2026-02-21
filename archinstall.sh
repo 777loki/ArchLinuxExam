@@ -5,28 +5,51 @@ set -e
 DISK="/dev/sda"
 PASS="azerty123"
 HOSTNAME="archexam"
+REPORT_PATH="/mnt/report.txt"
 
-# Export pour le chroot
-export PASS
-export HOSTNAME
-
-# Récupération propre des specs
+# Find system specs
 DISK_SIZE=$(lsblk -dnbo SIZE $DISK | awk '{print int($1/1024/1024/1024)}')
 RAM_SIZE=$(free -m | awk '/^Mem:/{print $2}')
 CPU_COUNT=$(lscpu | grep '^CPU(s):' | awk '{print $2}')
 
-echo "--- Vérification des spécifications système ---"
-[ -d "/sys/firmware/efi" ] && echo "UEFI >> OK" || { echo "PAS D'UEFI"; exit 1; }
-[ "$DISK_SIZE" -ge 75 ] && echo "DISK >> OK" || exit 1
-[ "$RAM_SIZE" -ge 7500 ] && echo "RAM >> OK" || exit 1
-[ "$CPU_COUNT" -ge 4 ] && echo "CPU >> OK" || exit 1
+# UEFI verification
+if [ ! -d "/sys/firmware/efi" ]; then
+    echo "ERROR: The system is not in UEFI mode!"
+    exit 1
+else
+    echo "UEFI >> OK"
+fi
+
+if [ "$DISK_SIZE" -lt 75 ]; then
+    echo "ERROR: Not enough disk space ($DISK_SIZE GB). 80 GB minimum required."
+    exit 1
+else
+    echo "DISK space required >> OK"
+fi
+
+if [ "$RAM_SIZE" -lt 7500 ]; then
+    echo "ERROR: Not enough RAM ($RAM_SIZE MB). 8 GB required."
+    exit 1
+else
+    echo "RAM space required >> OK"
+fi
+
+if [ "$CPU_COUNT" -lt 4 ]; then
+    echo "ERROR: Not enough CPUs ($CPU_COUNT). 4 minimum required."
+    exit 1
+else
+    echo "Enough CPUs >> OK"
+fi
+
+echo "!!! Verifications Done !!!"
 
 # Init disk
 sgdisk -Z $DISK 
 sgdisk -n 1:0:+512M -t 1:ef00 $DISK
 sgdisk -n 2:0:0 -t 2:8309 $DISK
 
-# Chiffrement
+# Encryption
+echo "!!! Encryption... !!!"
 echo -n "$PASS" | cryptsetup luksFormat --type luks2 --pbkdf pbkdf2 "${DISK}2" -
 echo -n "$PASS" | cryptsetup open "${DISK}2" cryptlvm
 
@@ -48,7 +71,7 @@ mkfs.ext4 /dev/vg0/partage
 mkfs.ext4 /dev/vg0/vbox
 mkswap /dev/vg0/swap
 
-# Double chiffrement secret
+# Double encryption secret
 echo -n "$PASS" | cryptsetup luksFormat --type luks2 /dev/vg0/secret -
 echo -n "$PASS" | cryptsetup open /dev/vg0/secret secret_crypt
 mkfs.ext4 /dev/mapper/secret_crypt
@@ -64,12 +87,12 @@ mount /dev/vg0/vbox /mnt/var/lib/virtualbox
 swapon /dev/vg0/swap
 
 # Installation
+echo "!!! Package Installation !!!"
+# pacman -Syu --noconfirm >> crash
 pacstrap -K /mnt base linux linux-firmware lvm2 base-devel networkmanager grub efibootmgr xorg-server i3-wm i3status dmenu terminator firefox openssh htop git virtualbox virtualbox-host-modules-arch vim bash-completion man-db man-pages texinfo
 
-# FSTAB (Après pacstrap)
 genfstab -U /mnt >> /mnt/etc/fstab
 
-# Config Pre-chroot
 sed -i '/^HOOKS=(/c\HOOKS=(base udev autodetect modconf block keyboard keymap encrypt lvm2 filesystems fsck)' /mnt/etc/mkinitcpio.conf
 UUID_LUKS=$(blkid -s UUID -o value ${DISK}2)
 sed -i 's/^#GRUB_ENABLE_CRYPTODISK=y/GRUB_ENABLE_CRYPTODISK=y/' /mnt/etc/default/grub
@@ -85,14 +108,14 @@ echo "LANG=fr_FR.UTF-8" > /etc/locale.conf
 echo "KEYMAP=fr" > /etc/vconsole.conf
 echo "$HOSTNAME" > /etc/hostname
 
-# Users & Groups
+# Users / Groups
 groupadd famille
 useradd -m -G wheel,vboxusers,famille -s /bin/bash Enzo
 useradd -m -G famille -s /bin/bash Fiston
 echo "Enzo:$PASS" | chpasswd
 echo "Fiston:$PASS" | chpasswd
 
-# Permissions (le dossier est déjà monté sur /partage dans le chroot)
+# Permissions
 chown root:famille /partage
 chmod 770 /partage
 
@@ -117,17 +140,22 @@ grub-mkconfig -o /boot/grub/grub.cfg
 systemctl enable NetworkManager
 EOF
 
-# REPORT (C'est ici qu'on vérifie le boulot)
-REPORT="/mnt/report.txt"
+# FINAL REPORT
 {
-    echo "<<<<< RENDU PARTIEL ARCH LINUX >>>>>"
+    echo "! ACCESS VERIFICATION HERE : $REPORT_PATH !"
     echo "HOSTNAME: $HOSTNAME"
-    echo -e "\n--- DISQUES ---"
+    echo -e "\n! DISKS !"
     lsblk -f
-    echo -e "\n--- PASSWD ---"
+    echo -e "\n! PASSWD !"
     cat /mnt/etc/passwd
-    echo -e "\n--- FSTAB ---"
+    echo -e "\n! GROUPS ! "
+    cat /mnt/etc/group
+    echo -e "\n! FSTAB !"
     cat /mnt/etc/fstab
-} > "$REPORT"
+    echo -e "\n! MTAB !"
+    cat /mnt/etc/mtab
+    echo -e "\n! INSTALLATION LOGS !"
+    grep -i installed /mnt/var/log/pacman.log | tail -n 30
+} > "$REPORT_PATH"
 
-echo "Installation TERMINEE !"
+echo "Installation COMPLETED !"
