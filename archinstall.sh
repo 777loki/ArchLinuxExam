@@ -151,10 +151,10 @@ EOF
     cat /mnt/etc/group
     echo -e "\n! FSTAB !"
     cat /mnt/etc/fstab
-    echo -e "\n! MTAB !"
-    cat /mnt/etc/mtab
     echo -e "\n! INSTALLATION LOGS !"
     grep -i installed /mnt/var/log/pacman.log | tail -n 30
+    echo -e "\n! MTAB !"
+    cat /mnt/etc/mtab
 } > "$REPORT_PATH"
 
 echo "Installation COMPLETED !"
